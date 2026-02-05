@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Health checks -->
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="8.0.0" />
+
+    <!-- OpenAPI + Swagger -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.17" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+
+    <!-- OpenTelemetry -->
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Process" Version="1.15.0-beta.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.0-beta.1" />
+
+    <!-- Serilog -->
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Loki" Version="3.0.0" />
+    
+    <!-- Entity Framework Core Design -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Trolle.Application\Trolle.Application.csproj" />
+    <ProjectReference Include="..\Trolle.Infrastructure\Trolle.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
