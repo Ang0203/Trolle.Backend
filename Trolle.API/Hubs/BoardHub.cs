@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR;
-using System.Threading.Tasks;
 
 namespace Trolle.API.Hubs;
 
@@ -26,7 +25,7 @@ public class BoardHub : Hub
     {
         if (string.IsNullOrWhiteSpace(boardId))
             throw new HubException("boardId is required");
-            
+
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, boardId);
     }
 
