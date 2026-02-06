@@ -1,0 +1,168 @@
+name: Trolle Backend CI/CD
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: angtj/trolle-backend
+  CONTEXT_PATH: .
+  DOCKERFILE_PATH: Trolle.API/Dockerfile
+  PLATFORMS: linux/amd64,linux/arm64
+
+  MAJOR_TERM: "MAJOR"
+  MINOR_TERM: "MINOR"
+  PATCH_TERM: "PATCH"
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet/Cache
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --verbosity normal --configuration Release
+
+  build-push:
+    name: Build & Push Docker Image
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU (for multi-arch)
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Determine version
+        id: versioning
+        run: |
+          set -euo pipefail
+          name="TrolleAPI"
+
+          git fetch --tags --prune
+
+          last_tag=$(git tag --list "${name}-v*" | sort -V | tail -n 1 || echo "")
+
+          if [[ -z "$last_tag" ]]; then
+            major=1
+            minor=0
+            patch=0
+          else
+            IFS='.' read -r major minor patch <<< "${last_tag##*-v}"
+          fi
+
+          # Get commit messages since last tag
+          if [[ -n "$last_tag" ]]; then
+            commits=$(git log "${last_tag}..HEAD" --pretty=%B)
+          else
+            commits=$(git log --pretty=%B)
+          fi
+
+          bump="PATCH"
+
+          if echo "$commits" | grep -qi "^${MAJOR_TERM}"; then
+            bump="MAJOR"
+          elif echo "$commits" | grep -qi "^${MINOR_TERM}"; then
+            bump="MINOR"
+          fi
+
+          case "$bump" in
+            MAJOR)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            MINOR)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            PATCH)
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          version="${major}.${minor}.${patch}"
+
+          echo "Version bump type: $bump"
+          echo "Computed Version: $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git tag
+        env:
+          GIT_TAG: "TrolleAPI-v${{ steps.versioning.outputs.version }}"
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          if git rev-parse "$GIT_TAG" >/dev/null 2>&1; then
+            echo "Tag $GIT_TAG already exists"
+          else
+            git tag "$GIT_TAG"
+            git push origin "refs/tags/$GIT_TAG"
+          fi
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ env.CONTEXT_PATH }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.versioning.outputs.version }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.versioning.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

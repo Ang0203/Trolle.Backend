@@ -1,4 +1,3 @@
-using NUnit.Framework;
 using Trolle.Domain.Entities;
 
 namespace Trolle.UnitTests.Domain;
@@ -18,7 +17,7 @@ public class ColumnTests
         var column = new Column(title, order, boardId);
 
         // Assert
-        Assert.That(column.Title, Is.EqualTo(title));
+        Assert.That(column.Title.Value, Is.EqualTo(title));
         Assert.That(column.Order, Is.EqualTo(order));
         Assert.That(column.BoardId, Is.EqualTo(boardId));
     }

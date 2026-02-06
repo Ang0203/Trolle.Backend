@@ -1,62 +1,116 @@
-using System.Collections.Generic;
 using Trolle.Domain.Common;
 
 namespace Trolle.Domain.Entities;
 
+/// <summary>
+/// Represents a column within a board.
+/// </summary>
 public class Column : BaseEntity
 {
-    public string Title { get; private set; }
-    public int Order { get; private set; }
-    public Guid BoardId { get; private set; }
-    public string TitleColor { get; private set; }
-    public string HeaderColor { get; private set; }
-    
-    // Navigation
+    #region Fields
+
     private readonly List<Card> _cards = new();
+
+    #endregion
+
+    #region Properties
+
+    /// <summary>
+    /// The title of the column.
+    /// </summary>
+    public Title Title { get; private set; }
+
+    /// <summary>
+    /// The title text color.
+    /// </summary>
+    public CssColor TitleColor { get; private set; }
+
+    /// <summary>
+    /// The header background color.
+    /// </summary>
+    public CssColor HeaderColor { get; private set; }
+
+    /// <summary>
+    /// The display order of the column.
+    /// </summary>
+    public int Order { get; private set; }
+
+    /// <summary>
+    /// The ID of the board this column belongs to.
+    /// </summary>
+    public Guid BoardId { get; private set; }
+
+    /// <summary>
+    /// The list of cards in this column.
+    /// </summary>
     public IReadOnlyCollection<Card> Cards => _cards.AsReadOnly();
 
-    private Column() 
-    { 
+    #endregion
+
+    #region Constructors
+
+    private Column()
+    {
         Title = null!;
         TitleColor = null!;
         HeaderColor = null!;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Column"/> class.
+    /// </summary>
     public Column(string title, int order, Guid boardId, string headerColor = "transparent")
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title cannot be empty", nameof(title));
-
-        Title = title;
+        Title = Title.Create(title);
+        TitleColor = CssColor.DefaultBoardBackground;
+        HeaderColor = CssColor.Create(headerColor);
         Order = order;
         BoardId = boardId;
-        TitleColor = "#1e293b"; // Default slate-800
-        HeaderColor = headerColor;
     }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    /// Updates the column title.
+    /// </summary>
+    /// <param name="title">The new title.</param>
     public void UpdateTitle(string title)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title cannot be empty", nameof(title));
-        Title = title;
+        Title = Title.Create(title);
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Updates the title text color.
+    /// </summary>
+    /// <param name="color">The new CSS color string.</param>
     public void UpdateTitleColor(string color)
     {
-        TitleColor = color;
+        TitleColor = CssColor.Create(color);
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Updates the header background color.
+    /// </summary>
+    /// <param name="color">The new CSS color string.</param>
     public void UpdateHeaderColor(string color)
     {
-        HeaderColor = color;
+        HeaderColor = CssColor.Create(color);
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Sets the column order.
+    /// </summary>
+    /// <param name="order">The new display order.</param>
     public void SetOrder(int order)
     {
         Order = order;
         UpdateAudit();
     }
+
+    #endregion
 }

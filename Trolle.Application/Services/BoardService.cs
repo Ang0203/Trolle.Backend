@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Trolle.Application.DTOs;
 using Trolle.Application.Interfaces;
 using Trolle.Application.Interfaces.Persistence;
@@ -9,125 +5,167 @@ using Trolle.Domain.Entities;
 
 namespace Trolle.Application.Services;
 
+/// <summary>
+/// Service for managing boards.
+/// </summary>
 public class BoardService : IBoardService
 {
     private readonly IBoardRepository _boardRepo;
-    private readonly ICardRepository _cardRepo;
-    private readonly ILabelRepository _labelRepo;
 
-    public BoardService(IBoardRepository boardRepo, ICardRepository cardRepo, ILabelRepository labelRepo)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BoardService"/> class.
+    /// </summary>
+    /// <param name="boardRepo">The board repository.</param>
+    public BoardService(IBoardRepository boardRepo)
     {
         _boardRepo = boardRepo;
-        _cardRepo = cardRepo;
-        _labelRepo = labelRepo;
     }
 
+    #region Board Queries
+
+    /// <inheritdoc />
     public async Task<IEnumerable<BoardDto>> GetBoardsAsync()
     {
         var boards = await _boardRepo.GetAllAsync();
-        // Manual mapping for now
         return boards
             .OrderByDescending(b => b.IsFavorite)
             .ThenByDescending(b => b.LastModifiedAt)
             .Select(b => new BoardDto
-        {
-            Id = b.Id,
-            Title = b.Title,
-            BackgroundImage = b.BackgroundImage,
-            TitleColor = b.TitleColor,
-            BackgroundColor = b.BackgroundColor,
-            IsFavorite = b.IsFavorite,
-            CreatedAt = b.CreatedAt
-        });
+            {
+                Id = b.Id,
+                Title = b.Title.Value,
+                BackgroundImage = b.BackgroundImage,
+                TitleColor = b.TitleColor.Value,
+                BackgroundColor = b.BackgroundColor.Value,
+                IsFavorite = b.IsFavorite,
+                CreatedAt = b.CreatedAt,
+                RowVersion = b.RowVersion
+            });
     }
 
+    /// <inheritdoc />
     public async Task<BoardDto?> GetBoardAsync(Guid id)
     {
         var board = await _boardRepo.GetByIdWithDetailsAsync(id);
         if (board == null) return null;
 
+        var columns = board.Columns.ToList();
+        columns.Sort((a, b) => a.Order.CompareTo(b.Order));
+
         return new BoardDto
         {
             Id = board.Id,
-            Title = board.Title,
+            Title = board.Title.Value,
             BackgroundImage = board.BackgroundImage,
-            TitleColor = board.TitleColor,
-            BackgroundColor = board.BackgroundColor,
+            TitleColor = board.TitleColor.Value,
+            BackgroundColor = board.BackgroundColor.Value,
             IsFavorite = board.IsFavorite,
             CreatedAt = board.CreatedAt,
+            RowVersion = board.RowVersion,
             Labels = board.Labels.Select(l => new LabelDto
             {
                 Id = l.Id,
-                Name = l.Name,
-                Color = l.Color,
-                TextColor = l.TextColor,
-                BoardId = l.BoardId
+                Name = l.Name.Value,
+                Color = l.Color.Value,
+                TextColor = l.TextColor.Value,
+                BoardId = l.BoardId,
+                RowVersion = l.RowVersion
             }).ToList(),
-            Columns = board.Columns.OrderBy(c => c.Order).Select(c => new ColumnDto
+            Columns = columns.Select(c =>
             {
-                Id = c.Id,
-                Title = c.Title,
-                TitleColor = c.TitleColor,
-                HeaderColor = c.HeaderColor,
-                Order = c.Order,
-                Cards = c.Cards.OrderBy(card => card.Order).Select(card => new CardDto
+                var cards = c.Cards.ToList();
+                cards.Sort((a, b) => a.Order.CompareTo(b.Order));
+                return new ColumnDto
                 {
-                    Id = card.Id,
-                    Title = card.Title,
-                    Description = card.Description,
-                    Order = card.Order,
-                    ColumnId = card.ColumnId,
-                    IsArchived = card.IsArchived,
-                    Labels = card.Labels.Select(l => new LabelDto
+                    Id = c.Id,
+                    Title = c.Title.Value,
+                    TitleColor = c.TitleColor.Value,
+                    HeaderColor = c.HeaderColor.Value,
+                    Order = c.Order,
+                    RowVersion = c.RowVersion,
+                    Cards = cards.Select(card => new CardDto
                     {
-                        Id = l.Id,
-                        Name = l.Name,
-                        Color = l.Color,
-                        TextColor = l.TextColor,
-                        BoardId = l.BoardId
+                        Id = card.Id,
+                        Title = card.Title.Value,
+                        Description = card.Description,
+                        Order = card.Order,
+                        ColumnId = card.ColumnId,
+                        IsArchived = card.IsArchived,
+                        RowVersion = card.RowVersion,
+                        Labels = card.Labels.Select(l => new LabelDto
+                        {
+                            Id = l.Id,
+                            Name = l.Name.Value,
+                            Color = l.Color.Value,
+                            TextColor = l.TextColor.Value,
+                            BoardId = l.BoardId,
+                            RowVersion = l.RowVersion
+                        }).ToList()
                     }).ToList()
-                }).ToList()
+                };
             }).ToList()
         };
     }
 
+    #endregion
+
+    #region Board Management
+
+    /// <inheritdoc />
     public async Task<Guid> CreateBoardAsync(string title, string? backgroundImage = null)
     {
-        // Default to "New Board" if empty
-        if (string.IsNullOrWhiteSpace(title)) title = "New Board";
+        // Validate and sanitize inputs
+        title = Application.Common.InputValidator.ValidateTitle(title, "New Board");
+        backgroundImage = Application.Common.InputValidator.ValidateDescription(backgroundImage);
 
         var board = new Board(title, backgroundImage);
         await _boardRepo.AddAsync(board);
         return board.Id;
     }
 
+    /// <inheritdoc />
+    /// <inheritdoc />
     public async Task UpdateTitleAsync(Guid boardId, string newTitle)
     {
         var board = await _boardRepo.GetByIdAsync(boardId);
         if (board == null) throw new Exception("Board not found");
 
+        // Validate and sanitize title
+        newTitle = Application.Common.InputValidator.ValidateTitle(newTitle, "New Board");
+        
         board.UpdateTitle(newTitle);
         await _boardRepo.UpdateAsync(board);
     }
 
+    /// <inheritdoc />
+    /// <inheritdoc />
     public async Task UpdateBoardTitleColorAsync(Guid boardId, string color)
     {
         var board = await _boardRepo.GetByIdAsync(boardId);
         if (board == null) throw new Exception("Board not found");
 
+        // Validate color
+        color = Application.Common.InputValidator.ValidateColor(color);
+        
         board.UpdateTitleColor(color);
         await _boardRepo.UpdateAsync(board);
     }
 
+    /// <inheritdoc />
+    /// <inheritdoc />
     public async Task UpdateBoardBackgroundColorAsync(Guid boardId, string color)
     {
         var board = await _boardRepo.GetByIdAsync(boardId);
         if (board == null) throw new Exception("Board not found");
 
+        // Validate color
+        color = Application.Common.InputValidator.ValidateColor(color);
+        
         board.UpdateBackgroundColor(color);
         await _boardRepo.UpdateAsync(board);
     }
 
+    /// <inheritdoc />
     public async Task ToggleFavoriteAsync(Guid boardId)
     {
         var board = await _boardRepo.GetByIdAsync(boardId);
@@ -137,181 +175,11 @@ public class BoardService : IBoardService
         await _boardRepo.UpdateAsync(board);
     }
 
+    /// <inheritdoc />
     public async Task DeleteBoardAsync(Guid id)
     {
         await _boardRepo.DeleteAsync(id);
     }
 
-    public async Task CreateColumnAsync(Guid boardId, string title, string? headerColor = null)
-    {
-        var board = await _boardRepo.GetByIdWithDetailsAsync(boardId);
-        if (board == null) throw new Exception("Board not found");
-
-        var maxOrder = board.Columns.Any() ? board.Columns.Max(c => c.Order) : 0;
-        board.AddColumn(title, maxOrder + 1, headerColor ?? "transparent");
-        
-        await _boardRepo.UpdateAsync(board);
-    }
-
-    public async Task UpdateColumnAsync(Guid boardId, Guid columnId, string title, string titleColor, string headerColor)
-    {
-        var board = await _boardRepo.GetByIdWithDetailsAsync(boardId);
-        if (board == null) throw new Exception("Board not found");
-
-        var column = board.Columns.FirstOrDefault(c => c.Id == columnId);
-        if (column == null) throw new Exception("Column not found");
-
-        column.UpdateTitle(title);
-        column.UpdateTitleColor(titleColor);
-        column.UpdateHeaderColor(headerColor);
-        
-        await _boardRepo.UpdateAsync(board);
-    }
-
-    public async Task DeleteColumnAsync(Guid boardId, Guid columnId)
-    {
-        var board = await _boardRepo.GetByIdWithDetailsAsync(boardId);
-        if (board == null) throw new Exception("Board not found");
-
-        board.RemoveColumn(columnId);
-        await _boardRepo.UpdateAsync(board);
-    }
-
-    public async Task CreateCardAsync(Guid columnId, string title, string? description, List<Guid> labelIds)
-    {
-        var card = new Card(title, description ?? string.Empty, 0, columnId);
-        if (labelIds != null && labelIds.Any())
-        {
-            var labels = await _labelRepo.GetByIdsAsync(labelIds);
-            card.SetLabels(labels);
-        }
-        await _cardRepo.AddAsync(card);
-    }
-
-    public async Task UpdateCardAsync(Guid cardId, string title, string? description, List<Guid> labelIds)
-    {
-        var card = await _cardRepo.GetByIdAsync(cardId);
-        if (card == null) throw new Exception("Card not found");
-
-        card.Update(title, description ?? string.Empty);
-        
-        if (labelIds != null)
-        {
-            var labels = await _labelRepo.GetByIdsAsync(labelIds);
-            card.SetLabels(labels);
-        }
-        
-        await _cardRepo.UpdateAsync(card);
-    }
-
-    public async Task DeleteCardAsync(Guid cardId)
-    {
-        await _cardRepo.DeleteAsync(cardId);
-    }
-
-    public async Task ArchiveCardAsync(Guid cardId)
-    {
-        var card = await _cardRepo.GetByIdAsync(cardId);
-        if (card == null) throw new Exception("Card not found");
-        card.Archive();
-        await _cardRepo.UpdateAsync(card);
-    }
-
-    public async Task UnarchiveCardAsync(Guid cardId)
-    {
-        var card = await _cardRepo.GetByIdAsync(cardId);
-        if (card == null) throw new Exception("Card not found");
-        card.Unarchive();
-        await _cardRepo.UpdateAsync(card);
-    }
-
-    public async Task<Guid> CreateLabelAsync(Guid boardId, string name, string color, string textColor)
-    {
-        var label = new Label(name, color, textColor, boardId);
-        await _labelRepo.AddAsync(label);
-        return label.Id;
-    }
-
-    public async Task UpdateLabelAsync(Guid labelId, string name, string color, string textColor)
-    {
-        var label = await _labelRepo.GetByIdAsync(labelId);
-        if (label == null) throw new Exception("Label not found");
-
-        label.Update(name, color, textColor);
-        await _labelRepo.UpdateAsync(label);
-    }
-
-    public async Task DeleteLabelAsync(Guid labelId)
-    {
-        await _labelRepo.DeleteAsync(labelId);
-    }
-
-    public async Task MoveCardAsync(Guid cardId, Guid targetColumnId, int newOrder)
-    {
-        var card = await _cardRepo.GetByIdAsync(cardId);
-        if (card == null) throw new Exception("Card not found");
-
-        card.MoveToColumn(targetColumnId);
-        card.SetOrder(newOrder);
-        
-        await _cardRepo.UpdateAsync(card);
-    }
-
-    public async Task MoveColumnAsync(Guid boardId, Guid columnId, int newOrder)
-    {
-        var board = await _boardRepo.GetByIdWithDetailsAsync(boardId);
-        if (board == null) throw new Exception("Board not found");
-
-        var columns = board.Columns.OrderBy(c => c.Order).ToList();
-        var columnToMove = columns.FirstOrDefault(c => c.Id == columnId);
-        if (columnToMove == null) throw new Exception("Column not found");
-
-        columns.Remove(columnToMove);
-        if (newOrder < 0) newOrder = 0;
-        if (newOrder > columns.Count) newOrder = columns.Count;
-        
-        columns.Insert(newOrder, columnToMove);
-
-        // Update all orders
-        for (int i = 0; i < columns.Count; i++)
-        {
-            columns[i].SetOrder(i);
-        }
-        
-        await _boardRepo.UpdateAsync(board);
-    }
-
-    public async Task BulkMoveColumnsAsync(Guid boardId, Dictionary<Guid, int> columnOrders)
-    {
-        var board = await _boardRepo.GetByIdWithDetailsAsync(boardId);
-        if (board == null) throw new Exception("Board not found");
-
-        foreach (var column in board.Columns)
-        {
-            if (columnOrders.TryGetValue(column.Id, out int newOrder))
-            {
-                column.SetOrder(newOrder);
-            }
-        }
-
-        await _boardRepo.UpdateAsync(board);
-    }
-
-    public async Task BulkMoveCardsAsync(Guid boardId, Dictionary<Guid, int> cardOrders)
-    {
-        var board = await _boardRepo.GetByIdWithDetailsAsync(boardId);
-        if (board == null) throw new Exception("Board not found");
-
-        var allCards = board.Columns.SelectMany(c => c.Cards).ToList();
-
-        foreach (var card in allCards)
-        {
-            if (cardOrders.TryGetValue(card.Id, out int newOrder))
-            {
-                card.SetOrder(newOrder);
-            }
-        }
-
-        await _boardRepo.UpdateAsync(board);
-    }
+    #endregion
 }

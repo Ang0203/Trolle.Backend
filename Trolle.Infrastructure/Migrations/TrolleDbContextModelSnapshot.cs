@@ -40,19 +40,15 @@ namespace Trolle.Infrastructure.Migrations
             modelBuilder.Entity("Trolle.Domain.Entities.Board", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("BackgroundColor")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("#1e293b")
                         .HasColumnName("background_color");
 
                     b.Property<string>("BackgroundImage")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
@@ -69,17 +65,20 @@ namespace Trolle.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_modified_at");
 
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("row_version");
+
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("title");
 
                     b.Property<string>("TitleColor")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("#ffffff")
                         .HasColumnName("title_color");
 
                     b.HasKey("Id");
@@ -90,7 +89,6 @@ namespace Trolle.Infrastructure.Migrations
             modelBuilder.Entity("Trolle.Domain.Entities.Card", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -121,6 +119,11 @@ namespace Trolle.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("order");
 
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("row_version");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -137,7 +140,6 @@ namespace Trolle.Infrastructure.Migrations
             modelBuilder.Entity("Trolle.Domain.Entities.Column", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -151,9 +153,7 @@ namespace Trolle.Infrastructure.Migrations
 
                     b.Property<string>("HeaderColor")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("transparent")
                         .HasColumnName("header_color");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -164,17 +164,20 @@ namespace Trolle.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("order");
 
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("row_version");
+
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("title");
 
                     b.Property<string>("TitleColor")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("#ffffff")
                         .HasColumnName("title_color");
 
                     b.HasKey("Id");
@@ -187,7 +190,6 @@ namespace Trolle.Infrastructure.Migrations
             modelBuilder.Entity("Trolle.Domain.Entities.Label", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -211,9 +213,14 @@ namespace Trolle.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<long>("RowVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("row_version");
 
                     b.Property<string>("TextColor")
                         .IsRequired()

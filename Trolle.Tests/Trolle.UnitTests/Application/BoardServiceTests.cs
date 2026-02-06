@@ -1,5 +1,4 @@
 using Moq;
-using NUnit.Framework;
 using Trolle.Application.Interfaces.Persistence;
 using Trolle.Application.Services;
 using Trolle.Domain.Entities;
@@ -10,17 +9,13 @@ namespace Trolle.UnitTests.Application;
 public class BoardServiceTests
 {
     private Mock<IBoardRepository> _boardRepoMock;
-    private Mock<ICardRepository> _cardRepoMock;
-    private Mock<ILabelRepository> _labelRepoMock;
     private BoardService _boardService;
 
     [SetUp]
     public void SetUp()
     {
         _boardRepoMock = new Mock<IBoardRepository>();
-        _cardRepoMock = new Mock<ICardRepository>();
-        _labelRepoMock = new Mock<ILabelRepository>();
-        _boardService = new BoardService(_boardRepoMock.Object, _cardRepoMock.Object, _labelRepoMock.Object);
+        _boardService = new BoardService(_boardRepoMock.Object);
     }
 
     [Test]
@@ -29,10 +24,9 @@ public class BoardServiceTests
         // Arrange
         var boards = new List<Board>
         {
-            new Board("Board 1") {  },
-            new Board("Board 2") {  }
+            new("Board 1") {  },
+            new("Board 2") {  }
         };
-        // Use reflection to set IsFavorite if it's private set, but Board has ToggleFavorite
         boards[1].ToggleFavorite(); // Board 2 is favorite
 
         _boardRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(boards);
@@ -43,7 +37,7 @@ public class BoardServiceTests
         // Assert
         var resultList = result.ToList();
         Assert.That(resultList.Count, Is.EqualTo(2));
-        Assert.That(resultList[0].Title, Is.EqualTo("Board 2")); // Favorite first
+        Assert.That(resultList[0].Title, Is.EqualTo("Board 2"));
         Assert.That(resultList[1].Title, Is.EqualTo("Board 1"));
     }
 
@@ -59,7 +53,7 @@ public class BoardServiceTests
 
         // Assert
         Assert.That(id, Is.Not.EqualTo(Guid.Empty));
-        _boardRepoMock.Verify(r => r.AddAsync(It.Is<Board>(b => b.Title == title)), Times.Once);
+        _boardRepoMock.Verify(r => r.AddAsync(It.Is<Board>(b => b.Title.Value == title)), Times.Once);
     }
 
     [Test]

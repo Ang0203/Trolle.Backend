@@ -1,4 +1,3 @@
-using NUnit.Framework;
 using Trolle.Domain.Entities;
 
 namespace Trolle.UnitTests.Domain;
@@ -17,7 +16,7 @@ public class BoardTests
         var board = new Board(title, backgroundImage);
 
         // Assert
-        Assert.That(board.Title, Is.EqualTo(title));
+        Assert.That(board.Title.Value, Is.EqualTo(title));
         Assert.That(board.BackgroundImage, Is.EqualTo(backgroundImage));
         Assert.That(board.Id, Is.Not.EqualTo(Guid.Empty));
     }
@@ -43,7 +42,7 @@ public class BoardTests
         board.UpdateTitle(newTitle);
 
         // Assert
-        Assert.That(board.Title, Is.EqualTo(newTitle));
+        Assert.That(board.Title.Value, Is.EqualTo(newTitle));
     }
 
     [Test]
@@ -58,7 +57,7 @@ public class BoardTests
 
         // Assert
         Assert.That(board.IsFavorite, Is.EqualTo(!initial));
-        
+
         // Act again
         board.ToggleFavorite();
         Assert.That(board.IsFavorite, Is.EqualTo(initial));

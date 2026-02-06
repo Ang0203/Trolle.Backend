@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 
+namespace Trolle.API.Hubs;
+
 /// <summary>
 /// Filter to handle exceptions in Hub methods
 /// </summary>

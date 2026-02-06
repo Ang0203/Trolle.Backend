@@ -1,4 +1,3 @@
-using NUnit.Framework;
 using Trolle.Domain.Entities;
 
 namespace Trolle.UnitTests.Domain;
@@ -17,7 +16,7 @@ public class CardTests
         var card = new Card(title, "Desc", 0, colId);
 
         // Assert
-        Assert.That(card.Title, Is.EqualTo(title));
+        Assert.That(card.Title.Value, Is.EqualTo(title));
         Assert.That(card.IsArchived, Is.False);
     }
 

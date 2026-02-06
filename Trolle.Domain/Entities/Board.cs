@@ -1,61 +1,127 @@
-using System;
-using System.Collections.Generic;
 using Trolle.Domain.Common;
 
 namespace Trolle.Domain.Entities;
 
+/// <summary>
+/// Represents a project board containing columns and cards.
+/// </summary>
 public class Board : BaseEntity
 {
-    public string Title { get; private set; }
-    
-    // Navigation
+    #region Fields
+
     private readonly List<Column> _columns = new();
+    private readonly List<Label> _labels = new();
+
+    #endregion
+
+    #region Properties
+
+    /// <summary>
+    /// Gets whether the board is favorited.
+    /// </summary>
+    public bool IsFavorite { get; private set; }
+
+    /// <summary>
+    /// The title of the board.
+    /// </summary>
+    public Title Title { get; private set; }
+
+    /// <summary>
+    /// The title color of the board.
+    /// </summary>
+    public CssColor TitleColor { get; private set; }
+
+    /// <summary>
+    /// The background image URL or color.
+    /// </summary>
+    public string? BackgroundImage { get; private set; }
+
+    /// <summary>
+    /// The background color of the board.
+    /// </summary>
+    public CssColor BackgroundColor { get; private set; }
+
+    /// <summary>
+    /// Gets the list of columns in this board.
+    /// </summary>
     public IReadOnlyCollection<Column> Columns => _columns.AsReadOnly();
 
-    private readonly List<Label> _labels = new();
+    /// <summary>
+    /// Gets the list of labels available for this board.
+    /// </summary>
     public IReadOnlyCollection<Label> Labels => _labels.AsReadOnly();
 
-    private Board() 
-    { 
+    #endregion
+
+    #region Constructors
+
+    private Board()
+    {
         Title = null!;
         TitleColor = null!;
         BackgroundColor = null!;
     }
 
-    public string? BackgroundImage { get; private set; }
-    public string TitleColor { get; private set; }
-    public string BackgroundColor { get; private set; }
-
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Board"/> class.
+    /// </summary>
     public Board(string title, string? backgroundImage = null)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title cannot be empty", nameof(title));
-        Title = title;
+        Title = Title.Create(title);
         BackgroundImage = backgroundImage;
-        TitleColor = "#1e293b"; // Default slate-800
-        BackgroundColor = "#1e293b"; // Default slate-800
+        TitleColor = CssColor.DefaultTitleColor;
+        BackgroundColor = CssColor.DefaultBoardBackground;
     }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    /// Toggles the favorite status.
+    /// </summary>
+    public void ToggleFavorite()
+    {
+        IsFavorite = !IsFavorite;
+        UpdateAudit();
+    }
+
+    /// <summary>
+    /// Updates the board title.
+    /// </summary>
+    /// <param name="title">The new title.</param>
     public void UpdateTitle(string title)
     {
-        if (string.IsNullOrWhiteSpace(title))
-            throw new ArgumentException("Title cannot be empty", nameof(title));
-        Title = title;
+        Title = Title.Create(title);
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Updates the board title color.
+    /// </summary>
+    /// <param name="color">The new CSS color string.</param>
     public void UpdateTitleColor(string color)
     {
-        TitleColor = color;
+        TitleColor = CssColor.Create(color);
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Updates the board background color.
+    /// </summary>
+    /// <param name="color">The new CSS color string.</param>
     public void UpdateBackgroundColor(string color)
     {
-        BackgroundColor = color;
+        BackgroundColor = CssColor.Create(color);
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Adds a new column to the board.
+    /// </summary>
+    /// <param name="title">The title of the column.</param>
+    /// <param name="order">The display order of the column.</param>
+    /// <param name="headerColor">The background color of the column header.</param>
     public void AddColumn(string title, int order, string headerColor = "transparent")
     {
         var column = new Column(title, order, this.Id, headerColor);
@@ -63,14 +129,10 @@ public class Board : BaseEntity
         UpdateAudit();
     }
 
-    public bool IsFavorite { get; private set; }
-
-    public void ToggleFavorite()
-    {
-        IsFavorite = !IsFavorite;
-        UpdateAudit();
-    }
-
+    /// <summary>
+    /// Removes a column from the board.
+    /// </summary>
+    /// <param name="columnId">The unique identifier of the column to remove.</param>
     public void RemoveColumn(Guid columnId)
     {
         var column = _columns.FirstOrDefault(c => c.Id == columnId);
@@ -81,6 +143,12 @@ public class Board : BaseEntity
         }
     }
 
+    /// <summary>
+    /// Adds a label to the board.
+    /// </summary>
+    /// <param name="name">The name of the label.</param>
+    /// <param name="color">The background color of the label.</param>
+    /// <param name="textColor">The text color of the label.</param>
     public void AddLabel(string name, string color, string textColor)
     {
         var label = new Label(name, color, textColor, this.Id);
@@ -88,6 +156,10 @@ public class Board : BaseEntity
         UpdateAudit();
     }
 
+    /// <summary>
+    /// Removes a label from the board.
+    /// </summary>
+    /// <param name="labelId">The unique identifier of the label to remove.</param>
     public void RemoveLabel(Guid labelId)
     {
         var label = _labels.FirstOrDefault(l => l.Id == labelId);
@@ -97,4 +169,6 @@ public class Board : BaseEntity
             UpdateAudit();
         }
     }
+
+    #endregion
 }

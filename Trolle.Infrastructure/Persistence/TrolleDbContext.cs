@@ -1,7 +1,6 @@
-using System;
-using System.Linq;
-using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Trolle.Domain.Common;
 using Trolle.Domain.Entities;
 
 namespace Trolle.Infrastructure.Persistence;
@@ -21,6 +20,27 @@ public class TrolleDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Optimistic Concurrency for BaseEntity
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType)
+                    .Property(nameof(BaseEntity.RowVersion))
+                    .HasColumnName("row_version")
+                    .IsConcurrencyToken();
+            }
+        }
+
+        // Value Converters
+        var titleConverter = new ValueConverter<Title, string>(
+            v => v.Value,
+            v => Title.Create(v));
+
+        var colorConverter = new ValueConverter<CssColor, string>(
+            v => v.Value,
+            v => CssColor.Create(v));
+
         // =======================
         // Board
         // =======================
@@ -31,12 +51,25 @@ public class TrolleDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id)
                 .HasColumnName("id")
-                .ValueGeneratedOnAdd();
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.IsFavorite)
+                .HasColumnName("is_favorite")
+                .HasDefaultValue(false);
 
             entity.Property(e => e.Title)
                 .HasColumnName("title")
+                .HasConversion(titleConverter)
                 .IsRequired()
-                .HasMaxLength(100);
+                .HasMaxLength(200);
+
+            entity.Property(e => e.TitleColor)
+                .HasColumnName("title_color")
+                .HasConversion(colorConverter);
+
+            entity.Property(e => e.BackgroundColor)
+                .HasColumnName("background_color")
+                .HasConversion(colorConverter);
 
             entity.Property(e => e.CreatedAt)
                 .HasColumnName("created_at");
@@ -48,30 +81,18 @@ public class TrolleDbContext : DbContext
                 .WithOne()
                 .HasForeignKey(c => c.BoardId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
-            // For private backing field
-            entity.Metadata.FindNavigation(nameof(Board.Columns))
-                ?.SetPropertyAccessMode(PropertyAccessMode.Field);
 
             entity.HasMany(e => e.Labels)
                 .WithOne()
                 .HasForeignKey(l => l.BoardId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.Metadata.FindNavigation(nameof(Board.Labels))
+            // For private backing field
+            entity.Metadata.FindNavigation(nameof(Board.Columns))
                 ?.SetPropertyAccessMode(PropertyAccessMode.Field);
 
-            entity.Property(e => e.IsFavorite)
-                .HasColumnName("is_favorite")
-                .HasDefaultValue(false);
-
-            entity.Property(e => e.TitleColor)
-                .HasColumnName("title_color")
-                .HasDefaultValue("#ffffff");
-
-            entity.Property(e => e.BackgroundColor)
-                .HasColumnName("background_color")
-                .HasDefaultValue("#1e293b");
+            entity.Metadata.FindNavigation(nameof(Board.Labels))
+                ?.SetPropertyAccessMode(PropertyAccessMode.Field);
         });
 
         // =======================
@@ -84,12 +105,21 @@ public class TrolleDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id)
                 .HasColumnName("id")
-                .ValueGeneratedOnAdd();
+                .ValueGeneratedNever();
 
             entity.Property(e => e.Title)
                 .HasColumnName("title")
+                .HasConversion(titleConverter)
                 .IsRequired()
-                .HasMaxLength(100);
+                .HasMaxLength(200);
+
+            entity.Property(e => e.TitleColor)
+                .HasColumnName("title_color")
+                .HasConversion(colorConverter);
+
+            entity.Property(e => e.HeaderColor)
+                .HasColumnName("header_color")
+                .HasConversion(colorConverter);
 
             entity.Property(e => e.Order)
                 .HasColumnName("order");
@@ -107,18 +137,10 @@ public class TrolleDbContext : DbContext
                 .WithOne()
                 .HasForeignKey(c => c.ColumnId)
                 .OnDelete(DeleteBehavior.Cascade);
-                  
+
             // For private backing field
             entity.Metadata.FindNavigation(nameof(Column.Cards))
                 ?.SetPropertyAccessMode(PropertyAccessMode.Field);
-
-            entity.Property(e => e.TitleColor)
-                .HasColumnName("title_color")
-                .HasDefaultValue("#ffffff");
-
-            entity.Property(e => e.HeaderColor)
-                .HasColumnName("header_color")
-                .HasDefaultValue("transparent");
         });
 
         // =======================
@@ -131,10 +153,11 @@ public class TrolleDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id)
                 .HasColumnName("id")
-                .ValueGeneratedOnAdd();
+                .ValueGeneratedNever();
 
             entity.Property(e => e.Title)
                 .HasColumnName("title")
+                .HasConversion(titleConverter)
                 .IsRequired()
                 .HasMaxLength(200);
 
@@ -161,6 +184,7 @@ public class TrolleDbContext : DbContext
                 .WithMany(l => l.Cards)
                 .UsingEntity(j => j.ToTable("card_label"));
 
+            // For private backing field
             entity.Metadata.FindNavigation(nameof(Card.Labels))
                 ?.SetPropertyAccessMode(PropertyAccessMode.Field);
         });
@@ -175,20 +199,23 @@ public class TrolleDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id)
                 .HasColumnName("id")
-                .ValueGeneratedOnAdd();
+                .ValueGeneratedNever();
 
             entity.Property(e => e.Name)
                 .HasColumnName("name")
+                .HasConversion(titleConverter)
                 .IsRequired()
-                .HasMaxLength(100);
-
-            entity.Property(e => e.Color)
-                .HasColumnName("color")
-                .IsRequired()
-                .HasMaxLength(50);
+                .HasMaxLength(200);
 
             entity.Property(e => e.TextColor)
                 .HasColumnName("text_color")
+                .HasConversion(colorConverter)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Color)
+                .HasColumnName("color")
+                .HasConversion(colorConverter)
                 .IsRequired()
                 .HasMaxLength(50);
 
@@ -200,6 +227,20 @@ public class TrolleDbContext : DbContext
 
             entity.Property(e => e.LastModifiedAt)
                 .HasColumnName("last_modified_at");
-        });
+        }); 
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            if (entry.State == EntityState.Modified)
+            {
+                // Increment version manually for Optimistic Concurrency
+                entry.Entity.RowVersion++;
+            }
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }

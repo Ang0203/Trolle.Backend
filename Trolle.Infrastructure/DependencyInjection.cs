@@ -21,7 +21,6 @@ public static class DependencyInjection
             options.UseNpgsql(
                 dbOptions.ConnectionString,
                 b => b.MigrationsAssembly(typeof(TrolleDbContext).Assembly.FullName)
-                      .UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery)
             );
         });
         

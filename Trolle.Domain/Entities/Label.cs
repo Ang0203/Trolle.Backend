@@ -1,41 +1,84 @@
 using Trolle.Domain.Common;
-using System;
-using System.Collections.Generic;
 
 namespace Trolle.Domain.Entities;
 
+/// <summary>
+/// Represents a label that can be assigned to cards.
+/// </summary>
 public class Label : BaseEntity
 {
-    public string Name { get; private set; }
-    public string Color { get; private set; }
-    public string TextColor { get; private set; }
-    
+    #region Fields
+
+    private readonly List<Card> _cards = new();
+
+    #endregion
+
+    #region Properties
+
+    /// <summary>
+    /// The name of the label.
+    /// </summary>
+    public Title Name { get; private set; }
+
+    /// <summary>
+    /// The text color for the label.
+    /// </summary>
+    public CssColor TextColor { get; private set; }
+
+    /// <summary>
+    /// The background color of the label.
+    /// </summary>
+    public CssColor Color { get; private set; }
+
+    /// <summary>
+    /// The ID of the board this label belongs to.
+    /// </summary>
     public Guid BoardId { get; private set; }
 
-    // Navigation properties for many-to-many
-    private readonly List<Card> _cards = new();
+    /// <summary>
+    /// Gets the list of cards this label is assigned to.
+    /// </summary>
     public IReadOnlyCollection<Card> Cards => _cards.AsReadOnly();
 
-    private Label() 
-    { 
+    #endregion
+
+    #region Constructors
+
+    private Label()
+    {
         Name = null!;
         Color = null!;
         TextColor = null!;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Label"/> class.
+    /// </summary>
     public Label(string name, string color, string textColor, Guid boardId)
     {
-        Name = name;
-        Color = color;
-        TextColor = textColor;
+        Name = Title.Create(name);
+        TextColor = CssColor.Create(textColor);
+        Color = CssColor.Create(color);
         BoardId = boardId;
     }
 
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    /// Updates label properties.
+    /// </summary>
+    /// <param name="name">The new name of the label.</param>
+    /// <param name="color">The new background color.</param>
+    /// <param name="textColor">The new text color.</param>
     public void Update(string name, string color, string textColor)
     {
-        Name = name;
-        Color = color;
-        TextColor = textColor;
+        Name = Title.Create(name);
+        Color = CssColor.Create(color);
+        TextColor = CssColor.Create(textColor);
         UpdateAudit();
     }
+
+    #endregion
 }
